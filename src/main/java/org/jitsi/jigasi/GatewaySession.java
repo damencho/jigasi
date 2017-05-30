@@ -23,6 +23,7 @@ import net.java.sip.communicator.service.protocol.media.*;
 import net.java.sip.communicator.util.Logger;
 import org.jitsi.jigasi.util.*;
 import org.jitsi.service.neomedia.*;
+import org.jitsi.service.neomedia.device.*;
 import org.jitsi.util.*;
 import org.jivesoftware.smack.packet.*;
 
@@ -403,84 +404,13 @@ public class GatewaySession
     {
         this.jvbConferenceCall = jvbConferenceCall;
 
-        if (destination == null)
-        {
-            CallManager.acceptCall(call);
-        }
-        else
-        {
-            //sendPresenceExtension(
-              //  createPresenceExtension(
-                //    SipGatewayExtension.STATE_RINGING, null));
-
-            //if (jvbConference != null)
-            //{
-              //  jvbConference.setPresenceStatus(
-                //    SipGatewayExtension.STATE_RINGING);
-            //}
-
-            // Make an outgoing call
-            final OperationSetBasicTelephony tele
-                = sipProvider.getOperationSet(
-                        OperationSetBasicTelephony.class);
-            // add listener to detect call creation, and add extra headers
-            // before inviting, and remove the listener when job is done
-            tele.addCallListener(new CallListener()
+        jvbConferenceCall.setConference(new MediaAwareCallConference(){
+            public MediaDevice getDefaultDevice(
+                MediaType mediaType,
+                MediaUseCase useCase)
             {
-                @Override
-                public void incomingCallReceived(CallEvent callEvent)
-                {}
-
-                @Override
-                public void outgoingCallCreated(CallEvent callEvent)
-                {
-                    String roomName = getJvbRoomName();
-                    if(roomName != null)
-                    {
-                        Call call = callEvent.getSourceCall();
-                        call.setData("EXTRA_HEADER_NAME.1",
-                            sipProvider.getAccountID()
-                                .getAccountPropertyString(
-                                    JITSI_MEET_ROOM_HEADER_PROPERTY,
-                                    "Jitsi-Conference-Room"));
-                        call.setData("EXTRA_HEADER_VALUE.1", roomName);
-                    }
-
-                    tele.removeCallListener(this);
-                }
-
-                @Override
-                public void callEnded(CallEvent callEvent)
-                {
-                    tele.removeCallListener(this);
-                }
-            });
-            try
-            {
-                this.call = tele.createCall(destination);
-
-                peerStateListener = new CallPeerListener(this.call);
-
-                // Outgoing SIP connection mode sets common conference object
-                // just after the call has been created
-                call.setConference(jvbConferenceCall.getConference());
-
-                logger.info(
-                    "Created outgoing call to " + destination + " " + call);
-
-                this.call.addCallChangeListener(callStateListener);
-
-                //FIXME: It might be already in progress or ended ?!
-                if (!CallState.CALL_INITIALIZATION.equals(call.getCallState()))
-                {
-                    callStateListener.handleCallState(call, null);
-                }
-            }
-            catch (OperationFailedException | ParseException e)
-            {
-                return e;
-            }
-        }
+                return new AudioMixerMediaDevice2();
+            }});
 
         return null;
     }
